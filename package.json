@@ -1,22 +1,29 @@
 {
-    "name": "teamprofilegenerator",
-    "version": "1.0.0",
-    "description": "",
-    "main": "app.js",
-    "scripts": {
-        "test": "jest"
-    },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/acruhf/Team-Profile-Generator.git"
-    },
-    "author": "",
-    "license": "MIT",
-    "bugs": {
-        "url": "https://github.com/acruhf/Team-Profile-Generator/issues"
-    },
-    "homepage": "https://github.com/acruhf/Team-Profile-Generator#readme",
-    "dependencies": {
-        "inquirer": "^7.3.3"
-    }
+  "name": "teamprofilegenerator",
+  "version": "1.0.0",
+  "description": "OOP and testing for week 10 homework",
+  "main": "app.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "jest --verbose test/*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Wtrickser/teamProfileGenerator.git"
+  },
+  "author": "Joseph",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Wtrickser/teamProfileGenerator/issues"
+  },
+  "homepage": "https://github.com/Wtrickser/teamProfileGenerator#readme",
+  "dependencies": {
+    "inquirer": "^6.3.1"
+  },
+  "devDependencies": {
+    "jest": "^24.8.0"
+  }
 }

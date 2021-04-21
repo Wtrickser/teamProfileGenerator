@@ -1,126 +1,212 @@
-  // Node modules
-  const inquirer = require("inquirer");
-  const fs = require("fs");
-  const util = require('util');
+const inquirer = require("inquirer");
+const fs = require("fs");
+const style = require("./templates/css")
 
-  const readFile = util.promisify(fs.readFile);
-  const writeFile = util.promisify(fs.writeFile);
+const Employee = require("./lib/employee")
+const Engineer = require("./lib/engineer")
+const Manager = require("./lib/manager")
+const Intern = require("./lib/intern")
 
-  // Lib modules
-  const timestamp = require("./lib/timestamp");
-  const Engineer = require("./lib/Engineer");
-  const Intern = require("./lib/Intern");
-  const Manager = require("./lib/Manager");
+let finalTeamArray = [];
 
-  const validate = {
-      required: input => input !== '' ? true : "This field is required.",
-      name: input => input !== '' ? true : "Please enter a name.",
-      id: input => Number.isInteger(Number(input)) && Number(input) > 0 ? true : "Please enter a positive whole number.",
-      email: input => input.match(/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+\@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/gi) ? true : "Please enter a valid email address."
-  }
 
-  const questions = {
-      type: function() {
-          return {
-              message: "Which type of team member would you like to add?",
-              type: "list",
-              name: "member",
-              choices: ["Engineer", "Intern", "I don't want to add anymore team members"]
-          };
-      },
-      item: function(member, variable, item = variable, validate) {
-          return {
-              message: `What is your ${member.toLowerCase()}'s ${item}?`,
-              type: "input",
-              name: variable,
-              validate: validate
-          };
-      }
-  };
+function startingPrompt() {
+    inquirer.prompt([
+        {
+            message: "/////////Welcome to Team Generator 5000! Please write your team name://///////",
+            name: "teamname"
+        }
+    ])
+        .then(function(data){
+            const teamName = data.teamname
+            finalTeamArray.push(teamName)
+            addManager();
+        })
 
-  let employees = [];
+    
+}
 
-  async function addRole(member) {
-      let { name } = await inquirer.prompt(questions.item(member, "name", "full name", validate.name));
-      let { id } = await inquirer.prompt(questions.item(member, "id", "ID number", validate.id));
-      let { email } = await inquirer.prompt(questions.item(member, "email", "email address", validate.email));
-      switch (member) {
-          case "Manager":
-              let { officeNumber } = await inquirer.prompt(questions.item(member, "officeNumber", "office phone number", validate.required));
-              employees.push(new Manager(name, id, email, officeNumber));
-              break;
-          case "Engineer":
-              let { github } = await inquirer.prompt(questions.item(member, "github", "GitHub username", validate.required));
-              employees.push(new Engineer(name, id, email, github));
-              break;
-          case "Intern":
-              let { school } = await inquirer.prompt(questions.item(member, "school", "school", validate.required));
-              employees.push(new Intern(name, id, email, school));
-              break;
-      };
-  };
+function addManager() {
+    inquirer.prompt([
+        {
+            message: "What is your team manager's name?",
+            name: "name"
+        },
+        {
+            message: "What is your team manager's email address?",
+            name: "email"
+        },
 
-  function getHTMLModule(file) {
-      return readFile(file, "utf8");
-  };
+        {
+            type: "number",
+            message: "What is your team manager's office number?",
+            name: "officeNumber"
+        },
+    ])
 
-  async function generateHTML() {
-      let Template = {
-          Main: await getHTMLModule("./templates/main.html"),
-          Manager: await getHTMLModule("./templates/manager.html"),
-          Engineer: await getHTMLModule("./templates/engineer.html"),
-          Intern: await getHTMLModule("./templates/intern.html")
-      };
+        .then(function (data) {
+            const name = data.name
+            const id = 1
+            const email = data.email
+            const officeNumber = data.officeNumber
+            const teamMember = new Manager(name, id, email, officeNumber)
+            finalTeamArray.push(teamMember)
+            addTeamMembers();
+        });
 
-      let employeesHTML = "";
+}
 
-      for (let employee of employees) {
-          let html = Template[employee.constructor.name]
-              .replace(/{% name %}/gi, employee.name)
-              .replace(/{% id %}/gi, employee.id)
-              .replace(/{% email %}/gi, employee.email);
-          switch (employee.constructor.name) {
-              case "Manager":
-                  html = html.replace(/{% officeNumber %}/gi, employee.officeNumber);
-                  break;
-              case "Engineer":
-                  html = html.replace(/{% github %}/gi, employee.github);
-                  break;
-              case "Intern":
-                  html = html.replace(/{% school %}/gi, employee.school);
-                  break;
-          };
-          employeesHTML += html;
-      };
-      let completeHTML = Template["Main"].replace(/{% employees %}/gi, employeesHTML);
+function addTeamMembers() {
+    inquirer.prompt([
+        {
+            type: "list",
+            message: "Would you like to add more team members?",
+            choices: ["Yes, add an engineer", "Yes, add an intern", "No, my team is complete"],
+            name: "addMemberData"
+        }
+    ])
 
-      createHTML(completeHTML);
-  };
+        .then(function (data) {
 
-  async function createHTML(html) {
-      console.log("Creating HTML...");
-      let file = `team-${timestamp()}.html`;
-      let dir = "./output";
-      if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir);
-      };
-      await writeFile(`${dir}/${file}`, html);
-      console.log(`HTML has been created to "${dir}/${file}".`);
-      return;
-  };
+            switch (data.addMemberData) {
+                case "Yes, add an engineer":
+                    addEngineer();
+                    break;
 
-  async function init() {
-      console.log("Please build your team");
-      await addRole("Manager");
-      let member = "";
-      let exit = "I don't want to add anymore team members";
-      while (member != exit) {
-          let { member } = await inquirer.prompt(questions.type());
-          if (member === exit) {
-              return generateHTML();
-          };
-          await addRole(member);
-      };
-  };
+                case "Yes, add an intern":
+                    addIntern();
+                    break;
+                case "No, my team is complete":
+                    compileTeam();
+                    break;
+            }
+        });
+}
 
-  init();
+function addEngineer() {
+    inquirer.prompt([
+        {
+            message: "What is this engineer's name?",
+            name: "name"
+        },
+        {
+            message: "What is this engineer's email address?",
+            name: "email"
+        },
+        {
+            message: "What is this engineer's Github profile?",
+            name: "github"
+        }
+    ])
+
+        .then(function (data) {
+            const name = data.name
+            const id = finalTeamArray.length + 1
+            const email = data.email
+            const github = data.github
+            const teamMember = new Engineer(name, id, email, github)
+            finalTeamArray.push(teamMember)
+            addTeamMembers()
+        });
+
+};
+
+function addIntern() {
+    inquirer.prompt([
+        {
+            message: "What is this intern's name?",
+            name: "name"
+        },
+        {
+            message: "What is this intern's email address?",
+            name: "email"
+        },
+        {
+            message: "What is this intern's school?",
+            name: "school"
+        }
+    ])
+
+        .then(function (data) {
+            const name = data.name
+            const id = finalTeamArray.length + 1
+            const email = data.email
+            const school = data.school
+            const teamMember = new Intern(name, id, email, school)
+            finalTeamArray.push(teamMember)
+            addTeamMembers()
+        });
+
+};
+
+function compileTeam() {
+    console.log("//////////You've done it!!! Now give your team a raise.////////")
+
+    const htmlArray = []
+    const htmlBeginning = `
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>${finalTeamArray[0]}</title>
+    <link href="https://fonts.googleapis.com/css?family=Bebas+Neue&display=swap" rel="stylesheet">
+    <style>
+     ${style}
+    </style>
+</head>
+<body>
+    <div class="banner-bar">
+        <h1>${finalTeamArray[0]}</h1>
+    </div>
+    <div class="card-container">
+    `
+    htmlArray.push(htmlBeginning);
+
+    for (let i = 1; i < finalTeamArray.length; i++) {
+        let object = `
+        <div class="member-card">
+            <div class="card-top">
+                <h2>${finalTeamArray[i].name}</h2>
+                <h2>${finalTeamArray[i].title}</h2>
+            </div>
+            <div class="card-bottom">
+                <p>Employee ID: ${finalTeamArray[i].id}</p>
+                <p>Email: <a href="mailto:${finalTeamArray[i].email}">${finalTeamArray[i].email}</a>></p>
+        `
+        if (finalTeamArray[i].officeNumber) {
+            object += `
+            <p>${finalTeamArray[i].officeNumber}</p>
+            `
+        }
+        if (finalTeamArray[i].github) {
+            object += `
+            <p>GitHub: <a href="https://github.com/${finalTeamArray[i].github}">${finalTeamArray[i].github}</a></p>
+            `
+        }
+        if (finalTeamArray[i].school) {
+            object += `
+            <p>School: ${finalTeamArray[i].school}</p>
+            `
+        }
+        object += `
+        </div>
+        </div>
+        `
+        htmlArray.push(object)
+    }
+
+    const htmlEnd = `
+    </div>
+    </body>
+    </html>
+    `
+    htmlArray.push(htmlEnd);
+
+    fs.writeFile(`./generated-html/${finalTeamArray[0]}.html`, htmlArray.join(""), function (err) {
+        
+    })
+}
+
+startingPrompt()
